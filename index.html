@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои Уроки и ДЗ</title>
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --card-bg: #ffffff;
+            --primary: #4a90e2;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --text: #2c3e50;
+            --border: #e1e4e8;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 { margin: 0; font-size: 24px; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-danger { background: var(--danger); color: white; padding: 6px 12px; font-size: 12px;}
+        .btn-success { background: var(--success); color: white; padding: 8px 16px; font-size: 13px;}
+        .btn-sm { padding: 6px 12px; font-size: 12px; background: #95a5a6; color: white;}
+
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .subject-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .subject-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .subject-title {
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-bottom: 2px dashed transparent;
+            outline: none;
+            background: transparent;
+            width: 80%;
+        }
+        .subject-title:focus { border-bottom-color: var(--primary); }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 350px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        th { background: #f8f9fa; font-weight: 600; position: sticky; top: 0;}
+        td input[type="number"], td input[type="text"] {
+            width: 50px;
+            padding: 5px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            text-align: center;
+        }
+        td input[type="text"] { width: 100px; }
+        
+        .checkbox-wrapper { display: flex; justify-content: center; }
+        .custom-checkbox {
+            width: 22px; height: 22px;
+            cursor: pointer;
+            accent-color: var(--success);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .done-row { background-color: #f0fff4; }
+        
+        .reset-btn { background: #95a5a6; color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📚 Мои Уроки и Схемы</h1>
+    <div>
+        <button class="btn btn-primary" onclick="addSubject()">+ Добавить предмет</button>
+        <button class="btn reset-btn" onclick="resetData()">Сбросить всё</button>
+    </div>
+</header>
+
+<div id="subjects-container" class="subjects-grid"></div>
+
+<script>
+    // Изначальные 15 предметов (как ты и просила)
+    const DEFAULT_SUBJECTS = [
+        "Математика", "Русский язык", "Литература", "Английский язык", 
+        "История", "Обществознание", "География", "Биология", 
+        "Физика", "Химия", "Информатика", "Технология", 
+        "Физкультура", "Музыка", "Татарский язык"
+    ];
+
+    let data = JSON.parse(localStorage.getItem('myLessonsData')) || { subjects: [] };
+
+    // Если данных нет, создаем 15 предметов
+    if (data.subjects.length === 0) {
+        DEFAULT_SUBJECTS.forEach((name, index) => {
+            data.subjects.push({
+                id: Date.now() + index,
+                name: name,
+                extraCols: [], // Для неограниченных столбиков
+                rows: []
+            });
+        });
+        saveData();
+    }
+
+    function saveData() {
+        localStorage.setItem('myLessonsData', JSON.stringify(data));
+    }
+
+    function render() {
+        const container = document.getElementById('subjects-container');
+        container.innerHTML = '';
+
+        data.subjects.forEach(subject => {
+            const card = document.createElement('div');
+            card.className = 'subject-card';
+            
+            // Заголовки таблицы (базовые 4 + добавленные)
+            let headers = '<th>Урок №</th><th>Сделано</th><th>ДЗ №</th><th>Сделано</th>';
+            subject.extraCols.forEach(col => {
+                headers += `<th>${col.name} <button class="btn-sm" onclick="removeCol(${subject.id}, '${col.id}')" style="padding:2px 6px; font-size:10px;">x</button></th>`;
+            });
+
+            // Строки таблицы
+            let rowsHtml = '';
+            subject.rows.forEach(row => {
+                let isDone = row.lessonDone && row.hwDone;
+                rowsHtml += `<tr class="${isDone ? 'done-row' : ''}">`;
+                rowsHtml += `<td><input type="number" value="${row.lessonNum}" onchange="updateRow(${subject.id}, ${row.id}, 'lessonNum', this.value)"></td>`;
+                rowsHtml += `<td><div class="checkbox-wrapper"><input type="checkbox" class="custom-checkbox" ${row.lessonDone ? 'checked' : ''} onchange="updateRow(${subject.id}, ${row.id}, 'lessonDone', this.checked)"></div></td>`;
+                rowsHtml += `<td><input type="number" value="${row.hwNum}" onchange="updateRow(${subject.id}, ${row.id}, 'hwNum', this.value)"></td>`;
+                rowsHtml += `<td><div class="checkbox-wrapper"><input type="checkbox" class="custom-checkbox" ${row.hwDone ? 'checked' : ''} onchange="updateRow(${subject.id}, ${row.id}, 'hwDone', this.checked)"></div></td>`;
+                
+                // Дополнительные столбики
+                subject.extraCols.forEach((col, colIndex) => {
+                    let val = row.extraData[colIndex] || '';
+                    if (col.type === 'checkbox') {
+                        rowsHtml += `<td><div class="checkbox-wrapper"><input type="checkbox" class="custom-checkbox" ${val ? 'checked' : ''} onchange="updateExtra(${subject.id}, ${row.id}, ${colIndex}, this.checked)"></div></td>`;
+                    } else {
+                        rowsHtml += `<td><input type="text" value="${val}" onchange="updateExtra(${subject.id}, ${row.id}, ${colIndex}, this.value)"></td>`;
+                    }
+                });
+
+                rowsHtml += `<td><button class="btn-danger" onclick="deleteRow(${subject.id}, ${row.id})">🗑</button></td>`;
+                rowsHtml += `</tr>`;
+            });
+
+            card.innerHTML = `
+                <div class="subject-header">
+                    <input type="text" class="subject-title" value="${subject.name}" onchange="updateSubjectName(${subject.id}, this.value)">
+                    <button class="btn-danger" onclick="deleteSubject(${subject.id})">Удалить</button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr>${headers}<th>🗑</th></tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-success" onclick="addRow(${subject.id})">+ Урок</button>
+                    <button class="btn btn-sm" onclick="addCol(${subject.id}, 'text')">+ Текстовый столбик</button>
+                    <button class="btn btn-sm" onclick="addCol(${subject.id}, 'checkbox')">+ Столбик-галочка</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // --- Функции управления ---
+    function updateSubjectName(id, name) {
+        const subj = data.subjects.find(s => s.id === id);
+        subj.name = name;
+        saveData();
+    }
+
+    function deleteSubject(id) {
+        if(confirm('Удалить этот предмет со всеми уроками?')) {
+            data.subjects = data.subjects.filter(s => s.id !== id);
+            saveData();
+            render();
+        }
+    }
+
+    function addSubject() {
+        const name = prompt('Название нового предмета:');
+        if(name) {
+            data.subjects.push({ id: Date.now(), name: name, extraCols: [], rows: [] });
+            saveData();
+            render();
+        }
+    }
+
+    function addRow(subjectId) {
+        const subj = data.subjects.find(s => s.id === subjectId);
+        const lastLesson = subj.rows.length > 0 ? subj.rows[subj.rows.length-1].lessonNum : 0;
+        const lastHw = subj.rows.length > 0 ? subj.rows[subj.rows.length-1].hwNum : 0;
+        
+        subj.rows.push({
+            id: Date.now(),
+            lessonNum: lastLesson + 1,
+            lessonDone: false,
+            hwNum: lastHw + 1,
+            hwDone: false,
+            extraData: new Array(subj.extraCols.length).fill('')
+        });
+        saveData();
+        render();
+    }
+
+    function deleteRow(subjectId, rowId) {
+        const subj = data.subjects.find(s => s.id === subjectId);
+        subj.rows = subj.rows.filter(r => r.id !== rowId);
+        saveData();
+        render();
+    }
+
+    function updateRow(subjectId, rowId, field, value) {
+        const subj = data.subjects.find(s => s.id === subjectId);
+        const row = subj.rows.find(r => r.id === rowId);
+        row[field] = (field.includes('Done')) ? value : Number(value);
+        saveData();
+        render(); // Перерисовываем, чтобы подсветить строку зеленым, если всё сделано
+    }
+
+    function addCol(subjectId, type) {
+        const name = prompt('Название нового столбика:');
+        if(name) {
+            const subj = data.subjects.find(s => s.id === subjectId);
+            subj.extraCols.push({ id: Date.now(), name: name, type: type });
+            // Добавляем пустые значения в существующие строки
+            subj.rows.forEach(r => r.extraData.push(''));
+            saveData();
+            render();
+        }
+    }
+
+    function removeCol(subjectId, colId) {
+        const subj = data.subjects.find(s => s.id === subjectId);
+        const colIndex = subj.extraCols.findIndex(c => c.id == colId);
+        if(colIndex !== -1) {
+            subj.extraCols.splice(colIndex, 1);
+            subj.rows.forEach(r => r.extraData.splice(colIndex, 1));
+            saveData();
+            render();
+        }
+    }
+
+    function updateExtra(subjectId, rowId, colIndex, value) {
+        const subj = data.subjects.find(s => s.id === subjectId);
+        const row = subj.rows.find(r => r.id === rowId);
+        row.extraData[colIndex] = value;
+        saveData();
+        render();
+    }
+
+    function resetData() {
+        if(confirm('Точно удалить ВСЕ данные и создать 15 пустых предметов заново?')) {
+            localStorage.removeItem('myLessonsData');
+            location.reload();
+        }
+    }
+
+    // Первичный запуск
+    render();
+</script>
+</body>
+</html>
